@@ -22,12 +22,18 @@ public:
 	void LockMovementAxis(float x = UNLOCK, float y = UNLOCK, float z = UNLOCK) {
 		mLockAxis = DirectX::SimpleMath::Vector3(x, y, z);
 	}
+	void LockRotationAxis(float xMax = UNLOCK, float yMax = UNLOCK, float zMax = UNLOCK, float xMin = UNLOCK, float yMin = UNLOCK, float zMin = UNLOCK) {
+		mLockRotationMax = DirectX::SimpleMath::Vector3(xMax, yMax, zMax);
+		mLockRotationMin = DirectX::SimpleMath::Vector3(xMin, yMin, zMin);
+	}
 	const DirectX::SimpleMath::Vector3& GetPos() {
 		return mCamPos;
 	}
 
 private:
 	DirectX::SimpleMath::Vector3 mLockAxis{ UNLOCK,UNLOCK,UNLOCK };
+	DirectX::SimpleMath::Vector3 mLockRotationMax{ UNLOCK,UNLOCK,UNLOCK };
+	DirectX::SimpleMath::Vector3 mLockRotationMin{ UNLOCK,UNLOCK,UNLOCK };
 	//the camera matrix to modify
 	DirectX::SimpleMath::Matrix* mpViewSpaceTfm;
 	//movement and rotation speed

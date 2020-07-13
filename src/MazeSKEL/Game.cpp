@@ -6,12 +6,13 @@
 #include "GeometryBuilder.h"
 #include "FX.h"
 #include "Input.h"
+#include <ctime>
 
 using namespace std;
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
 
-Vector3 gWorldScale(10, 10, 10);
+//Vector3 gWorldScale(10, 10, 10);
 
 
 void Game::OnResize(int screenWidth, int screenHeight)
@@ -21,6 +22,7 @@ void Game::OnResize(int screenWidth, int screenHeight)
 
 void Game::Initialise()
 {
+	std::srand(std::time(nullptr));
 	/*mQuad.Initialise(BuildQuad(*GetMeshManager()));*/
 
 	//textured lit box
@@ -33,15 +35,41 @@ void Game::Initialise()
 	mat.texture = "test.dds";
 	mBox.SetOverrideMat(&mat);*/
 
+	//Projectile
+	Mesh& pt = GetMeshManager()->CreateMesh("missile");
+	pt.CreateFrom("data/missile.obj", gd3dDevice, FX::GetMyFX()->mCache);
+	for(int i = 0; i < 25; i++)
+	{
+		Model* projectile = new Model;
+		projectile->Initialise(*GetMeshManager()->GetMesh("missile"));
+		projectile->GetRotation() = Vector3(PI, 0, 0);
+		projectile->GetScale() = Vector3(.075, .075, .075);
+		mOpaques.push_back(projectile);
+		mProjectiles.push_back(projectile);
+	}
+
+	
+	//mProjectile.Initialise(BuildQuad(*GetMeshManager()));
+	
 	//Plane
 	// Create an empty mesh refrence and add it to the mesh manager
 	Mesh& et = GetMeshManager()->CreateMesh("Plane");
 	// Using mesh refrence assign mesh to the target object
-	et.CreateFrom("data/fluzeug.obj", gd3dDevice, FX::GetMyFX()->mCache);
+	et.CreateFrom("data/plane.obj", gd3dDevice, FX::GetMyFX()->mCache);
+	
 	mPlane.Initialise(et);
-	mPlane.GetPosition() = Vector3(0, -1, 0);
-	mPlane.GetRotation() = Vector3(0, PI/2, 0);
-	mPlane.GetScale() = Vector3(.5f, .5f, .5f);
+	//mPlane.Initialise(*GetMeshManager()->GetMesh("quad"));
+	//mPlane.Initialise(BuildQuad(*GetMeshManager()));
+	mPlane.GetPosition() = Vector3(0,0,0);
+	mPlane.GetRotation() = Vector3(0, PI, 0);
+	mPlane.GetScale() = Vector3(.01, .01, .01);
+	mPlane.active = true;
+	MaterialExt mat = mPlane.GetMesh().GetSubMesh(0).material;
+	mat.gfxData.Set(Vector4(0.5, 0.5, 0.5, 1), Vector4(1, 1, 1, 0), Vector4(1, 1, 1, 1));
+	mat.pTextureRV = FX::GetMyFX()->mCache.LoadTexture("plane.dds", true, gd3dDevice);
+	mat.texture = "plane.dds";
+	mPlane.SetOverrideMat(&mat);
+	
 
 	// floor
 	/*mQuad.GetScale() = Vector3(3, 1, 3);
@@ -63,37 +91,99 @@ void Game::Initialise()
 	defMat.flags &= ~MaterialExt::LIT;
 	defMat.flags &= ~MaterialExt::ZTEST;
 
-	//scale the world
 	//mOpaques.push_back(&mQuad);
 	//mOpaques.push_back(&mBox);
 	mOpaques.push_back(&mPlane);
-	for (Model* obj : mOpaques)
-	{
-		obj->GetScale() *= gWorldScale;
-		obj->GetPosition() *= gWorldScale;
-	}
-
 
 	FX::SetupDirectionalLight(0, true, Vector3(-0.7f, -0.7f, 0.7f), Vector3(0.67f, 0.67f, 0.67f), Vector3(0.25f, 0.25f, 0.25f), Vector3(0.15f, 0.15f, 0.15f));
-
-	mCamera.Initialise(Vector3(-15, -9.5, -25), Vector3(0, 0, 1), FX::GetViewMatrix());
-	mCamera.LockMovementAxis(FPSCamera::UNLOCK, -9.5f, FPSCamera::UNLOCK);
+	mCamera.Initialise(Vector3(0, 30, -55), Vector3(0, 20, 1), FX::GetViewMatrix());
+	mCamera.LockMovementAxis(0, 30, -55);
+	mCamera.LockRotationAxis(0, 0, 0, 0, 0, 0);
 }
 
 void Game::Release()
 {
 }
 
+float Game::MapNumber(float inMin, float inMax, float outMin, float outMax, float inNumber)
+{
+	return (inNumber - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}
+
+float Game::Clip(float n, float lower, float upper)
+{
+	return max(lower, min(n, upper));
+}
+
 void Game::Update(float dTime)
 {
-	mCamera.Move(dTime, GetMouseAndKeys()->IsPressed(VK_W), GetMouseAndKeys()->IsPressed(VK_S), GetMouseAndKeys()->IsPressed(VK_A), GetMouseAndKeys()->IsPressed(VK_D));
-	Vector2 m = GetMouseAndKeys()->GetMouseMoveAndCentre();
-	if (m.x != 0 || m.y != 0)
-		mCamera.Rotate(dTime, m.x, m.y, 0);
+	spawnCountdown -= dTime;
+	if (spawnCountdown <= 0)
+	{
+		spawnCountdown = spawnInterval;
+		SpawnProjectiles();
+	}
+	MovePlane();
+	MoveProjectiles(dTime);
+	controllerPosition += controllerInput * dTime * moveSpeed;
+	controllerPosition = Clip(controllerPosition, -1, 1);
+	planePosition.x = MapNumber(-1, 1, -25, 25, controllerPosition);
+	mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
+}
 
+void Game::MovePlane()
+{
+	if (GetMouseAndKeys()->IsPressed(VK_A)) {
+		controllerInput = -1;
+	}
+	else if (GetMouseAndKeys()->IsPressed(VK_D)) {
+		controllerInput = 1;
+	}
+	else
+		controllerInput = 0;
+}
 
-	gAngle += dTime * 0.5f;
-	//mBox.GetRotation().y = gAngle;
+void Game::SpawnProjectiles()
+{
+	float pos = (rand() % 50 + 1) - 26;
+
+	for(int i = 0; i < mProjectiles.size(); i++)
+	{
+		if(!mProjectiles[i]->active)
+		{
+			mProjectiles[i]->active = true;
+			mProjectiles[i]->GetPosition() = Vector3(pos, 0, 150);
+			break;
+		}
+	}
+}
+
+void Game::MoveProjectiles(float dTime)
+{
+	for (int i = 0; i < mProjectiles.size(); i++)
+	{
+		if (mProjectiles[i]->active)
+		{
+			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * 25);
+			mProjectiles[i]->GetRotation() = mProjectiles[i]->GetRotation() - Vector3(0, 0, dTime * 5);
+			
+			if(mProjectiles[i]->GetPosition().z <= 0 && !mProjectiles[i]->playerHit)
+			{
+				mProjectiles[i]->playerHit = true;
+				if(abs(mProjectiles[i]->GetPosition().x - mPlane.GetPosition().x) < 8)
+				{
+					mProjectiles[i]->active = false;
+					mProjectiles[i]->playerHit = false;
+				}
+			}
+
+			if (mProjectiles[i]->GetPosition().z < -65)
+			{
+				mProjectiles[i]->active = false;
+				mProjectiles[i]->playerHit = false;
+			}
+		}
+	}
 }
 
 void Game::Render(float dTime)
@@ -114,7 +204,11 @@ void Game::Render(float dTime)
 	FX::GetMyFX()->Render(mSkybox, gd3dImmediateContext);
 	//render all the solid models first in no particular order
 	for (Model*p : mOpaques)
-		FX::GetMyFX()->Render(*p, gd3dImmediateContext);
+	{
+		if(!p->active)
+			continue;
+		FX::GetMyFX()->Render(*p, gd3dImmediateContext);	
+	}
 
 	EndRender();
 

@@ -15,6 +15,9 @@ class Model
 {
 public:
 	void Initialise(Mesh &mesh);
+
+	bool active = false;
+	bool playerHit = false;
 	
 	DirectX::SimpleMath::Vector3& GetPosition() { return mPosition; }
 	DirectX::SimpleMath::Vector3& GetScale() { return mScale; }

@@ -52,10 +52,19 @@ void FPSCamera::Rotate(float dTime, float _yaw, float _pitch, float _roll)
 	yaw += _yaw * dTime * rspeed;
 	pitch += _pitch * dTime * rspeed;
 	roll += _roll * dTime * rspeed;
-	Matrix ori;
+	/*Matrix ori;
 	ori = Matrix::CreateFromYawPitchRoll(yaw, pitch, roll);
 	Vector3 dir(0, 0, 1), up(0, 1, 0);
 	dir = Vector3::TransformNormal(dir, ori);
 	up = Vector3::TransformNormal(up, ori);
-	CreateViewMatrix(*mpViewSpaceTfm, mCamPos, mCamPos + dir, up);
+	CreateViewMatrix(*mpViewSpaceTfm, mCamPos, mCamPos + dir, up);*/
+
+	if (yaw > mLockRotationMax.x && mLockRotationMax.x != UNLOCK) yaw = mLockRotationMax.x;
+	if (pitch > mLockRotationMax.y && mLockRotationMax.y != UNLOCK) pitch = mLockRotationMax.y;
+	if (roll > mLockRotationMax.z && mLockRotationMax.z != UNLOCK) roll = mLockRotationMax.z;
+
+
+	if (yaw < mLockRotationMin.x && mLockRotationMin.x != UNLOCK) yaw = mLockRotationMin.x;
+	if (pitch < mLockRotationMin.y && mLockRotationMin.y != UNLOCK) pitch = mLockRotationMin.y;
+	if (roll < mLockRotationMin.z && mLockRotationMin.z != UNLOCK) roll = mLockRotationMin.z;
 }
