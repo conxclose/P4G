@@ -8,6 +8,14 @@
 #include "Model.h"
 #include "FPSCamera.h"
 
+struct userStats
+{
+	int lives = 3;
+	int projectilesAvoided = 0;
+	float timeSurvived = 0.0f;
+	std::string name;
+};
+
 class Game
 {
 public:
@@ -23,9 +31,11 @@ public:
 	void Release();
 	void MovePlane();
 	void SpawnProjectiles();
-	void MoveProjectiles(float dTime);
+	void MoveProjectiles(float dTime);	
 	float MapNumber(float inMin, float inMax, float outMin, float outMax, float inNumber);
 	float Clip(float n, float lower, float upper);
+	float IncreaseDifficultyOverTime();
+	float IncreaseMoveSpeedOverTime();
 	LRESULT WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	Model mBox, mQuad, mSkybox, mPlane;
@@ -36,12 +46,22 @@ private:
 	Game(const Game& m) = delete;
 
 	float gAngle = 0;
-	float spawnInterval = 5;
-	float spawnCountdown = spawnInterval;
+	float maxSpawnInterval = 5.f;
+	float lowestSpawnInterval = 0.3f;
+	float spawnCountdown;
 	float controllerInput;
 	float controllerPosition;
-	DirectX::SimpleMath::Vector3 planePosition = DirectX::SimpleMath::Vector3(0, -20, 0);
 	float moveSpeed = 1.5f;
+	float difficultyFactor = 0.047f;
+	float speedDifficultyFactor = 0.375f;
+	float maxProjectileSpeed = 100.f;
+	float lowestProjectileSpeed = 25.f;
+
+	float projectileSpeed;
+	
+	
+	DirectX::SimpleMath::Vector3 planePosition = DirectX::SimpleMath::Vector3(0, 0, 0);
+	
 	FPSCamera mCamera;
 	std::vector<Model*> mOpaques;
 

@@ -114,6 +114,7 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="ShaderTypes.cpp" />
     <ClCompile Include="SpriteAnim.cpp" />
+    <ClCompile Include="TextRenderer.cpp" />
     <ClCompile Include="UserFolder.cpp" />
     <ClCompile Include="UtilsDefines.cpp" />
     <ClCompile Include="WindowUtils.cpp" />
@@ -137,6 +138,7 @@
     <ClInclude Include="ShaderTypes.h" />
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="SpriteAnim.h" />
+    <ClInclude Include="TextRenderer.h" />
     <ClInclude Include="UserFolder.h" />
     <ClInclude Include="UtilsDefines.h" />
     <ClInclude Include="WindowUtils.h" />

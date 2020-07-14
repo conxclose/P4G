@@ -8,12 +8,13 @@
 #include "Input.h"
 #include <ctime>
 
+#include "TextRenderer.h"
+
 using namespace std;
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
 
-//Vector3 gWorldScale(10, 10, 10);
-
+userStats gUserStats;
 
 void Game::OnResize(int screenWidth, int screenHeight)
 {
@@ -22,65 +23,48 @@ void Game::OnResize(int screenWidth, int screenHeight)
 
 void Game::Initialise()
 {
-	std::srand(std::time(nullptr));
-	/*mQuad.Initialise(BuildQuad(*GetMeshManager()));*/
-
-	//textured lit box
-	/*mBox.Initialise(BuildCube(*GetMeshManager()));
-	mBox.GetPosition() = Vector3(0, -0.5f, 1);
-	mBox.GetScale() = Vector3(0.5f, 0.5f, 0.5f);
-	MaterialExt mat = mQuad.GetMesh().GetSubMesh(0).material;
-	mat.gfxData.Set(Vector4(0.5, 0.5, 0.5, 1), Vector4(1, 1, 1, 0), Vector4(1, 1, 1, 1));
-	mat.pTextureRV = FX::GetMyFX()->mCache.LoadTexture("test.dds", true, gd3dDevice);
-	mat.texture = "test.dds";
-	mBox.SetOverrideMat(&mat);*/
+	TextRenderer::Initialise();
+	srand(time(nullptr));
+	spawnCountdown = 0;
 
 	//Projectile
 	Mesh& pt = GetMeshManager()->CreateMesh("missile");
 	pt.CreateFrom("data/missile.obj", gd3dDevice, FX::GetMyFX()->mCache);
+	MaterialExt matP;
 	for(int i = 0; i < 25; i++)
 	{
 		Model* projectile = new Model;
 		projectile->Initialise(*GetMeshManager()->GetMesh("missile"));
 		projectile->GetRotation() = Vector3(PI, 0, 0);
 		projectile->GetScale() = Vector3(.075, .075, .075);
+		
+		matP = projectile->GetMesh().GetSubMesh(0).material;
+		matP.gfxData.Set(Vector4(1, 1, 1, 1), Vector4(1, 1, 1, 1), Vector4(1, 1, 1, 1));
+		matP.pTextureRV = FX::GetMyFX()->mCache.LoadTexture("missile.dds", true, gd3dDevice);
+		matP.texture = "missile.dds";
+		
+		projectile->SetOverrideMat(&matP);
 		mOpaques.push_back(projectile);
 		mProjectiles.push_back(projectile);
 	}
-
-	
-	//mProjectile.Initialise(BuildQuad(*GetMeshManager()));
 	
 	//Plane
-	// Create an empty mesh refrence and add it to the mesh manager
 	Mesh& et = GetMeshManager()->CreateMesh("Plane");
-	// Using mesh refrence assign mesh to the target object
 	et.CreateFrom("data/plane.obj", gd3dDevice, FX::GetMyFX()->mCache);
 	
 	mPlane.Initialise(et);
-	//mPlane.Initialise(*GetMeshManager()->GetMesh("quad"));
-	//mPlane.Initialise(BuildQuad(*GetMeshManager()));
 	mPlane.GetPosition() = Vector3(0,0,0);
 	mPlane.GetRotation() = Vector3(0, PI, 0);
 	mPlane.GetScale() = Vector3(.01, .01, .01);
 	mPlane.active = true;
+	
 	MaterialExt mat = mPlane.GetMesh().GetSubMesh(0).material;
 	mat.gfxData.Set(Vector4(0.5, 0.5, 0.5, 1), Vector4(1, 1, 1, 0), Vector4(1, 1, 1, 1));
 	mat.pTextureRV = FX::GetMyFX()->mCache.LoadTexture("plane.dds", true, gd3dDevice);
 	mat.texture = "plane.dds";
 	mPlane.SetOverrideMat(&mat);
 	
-
-	// floor
-	/*mQuad.GetScale() = Vector3(3, 1, 3);
-	mQuad.GetPosition() = Vector3(0, -1, 0);
-	mat = mQuad.GetMesh().GetSubMesh(0).material;
-	mat.gfxData.Set(Vector4(0.9f, 0.8f, 0.8f, 0), Vector4(0.9f, 0.8f, 0.8f, 0), Vector4(0.9f, 0.8f, 0.8f, 1));
-	mat.pTextureRV = FX::GetMyFX()->mCache.LoadTexture("test.dds", true, gd3dDevice);
-	mat.texture = "test.dds";
-	mat.texTrsfm.scale = Vector2(10, 10);
-	mQuad.SetOverrideMat(&mat);*/
-
+	//Skybox
 	Mesh& sb = GetMeshManager()->CreateMesh("skybox");
 	sb.CreateFrom("data/skybox.fbx", gd3dDevice, FX::GetMyFX()->mCache);
 	mSkybox.Initialise(sb);
@@ -91,8 +75,6 @@ void Game::Initialise()
 	defMat.flags &= ~MaterialExt::LIT;
 	defMat.flags &= ~MaterialExt::ZTEST;
 
-	//mOpaques.push_back(&mQuad);
-	//mOpaques.push_back(&mBox);
 	mOpaques.push_back(&mPlane);
 
 	FX::SetupDirectionalLight(0, true, Vector3(-0.7f, -0.7f, 0.7f), Vector3(0.67f, 0.67f, 0.67f), Vector3(0.25f, 0.25f, 0.25f), Vector3(0.15f, 0.15f, 0.15f));
@@ -115,12 +97,23 @@ float Game::Clip(float n, float lower, float upper)
 	return max(lower, min(n, upper));
 }
 
+float Game::IncreaseDifficultyOverTime()
+{
+	return max(maxSpawnInterval - difficultyFactor * gUserStats.timeSurvived, lowestSpawnInterval);
+}
+
+float Game::IncreaseMoveSpeedOverTime()
+{
+	return min(speedDifficultyFactor * gUserStats.timeSurvived + lowestProjectileSpeed, maxProjectileSpeed);
+}
+
 void Game::Update(float dTime)
 {
+	gUserStats.timeSurvived += dTime;
 	spawnCountdown -= dTime;
 	if (spawnCountdown <= 0)
 	{
-		spawnCountdown = spawnInterval;
+		spawnCountdown = IncreaseDifficultyOverTime();
 		SpawnProjectiles();
 	}
 	MovePlane();
@@ -160,11 +153,12 @@ void Game::SpawnProjectiles()
 
 void Game::MoveProjectiles(float dTime)
 {
+	projectileSpeed = IncreaseMoveSpeedOverTime();
 	for (int i = 0; i < mProjectiles.size(); i++)
 	{
 		if (mProjectiles[i]->active)
 		{
-			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * 25);
+			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * projectileSpeed);
 			mProjectiles[i]->GetRotation() = mProjectiles[i]->GetRotation() - Vector3(0, 0, dTime * 5);
 			
 			if(mProjectiles[i]->GetPosition().z <= 0 && !mProjectiles[i]->playerHit)
@@ -210,9 +204,26 @@ void Game::Render(float dTime)
 		FX::GetMyFX()->Render(*p, gd3dImmediateContext);	
 	}
 
+	TextRenderer::SetFont("LatoRegular16");
+	TextRenderer::DrawString
+	(
+		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(0, 0),Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"Spawn Inteveral: " + to_wstring(spawnCountdown), Vector2(0, 30), Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"Move Speed: " + to_wstring(projectileSpeed), Vector2(0, 60), Vector3(1, 1, 1)
+	);
+	
 	EndRender();
 
 	GetMouseAndKeys()->PostProcess();
+
 }
 
 LRESULT Game::WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -239,4 +250,3 @@ LRESULT Game::WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 	//default message handling (resize window, full screen, etc)
 	return DefaultMssgHandler(hwnd, msg, wParam, lParam);
 }
-
