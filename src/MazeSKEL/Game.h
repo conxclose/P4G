@@ -16,6 +16,15 @@ struct userStats
 	std::string name;
 };
 
+struct gameAttributes
+{
+	float spawnCountdown;
+	float controllerInput;
+	float controllerPosition;
+	float projectileSpeed;
+	
+};
+
 class Game
 {
 public:
@@ -48,16 +57,12 @@ private:
 	float gAngle = 0;
 	float maxSpawnInterval = 5.f;
 	float lowestSpawnInterval = 0.3f;
-	float spawnCountdown;
-	float controllerInput;
-	float controllerPosition;
 	float moveSpeed = 1.5f;
 	float difficultyFactor = 0.047f;
 	float speedDifficultyFactor = 0.375f;
 	float maxProjectileSpeed = 100.f;
 	float lowestProjectileSpeed = 25.f;
 
-	float projectileSpeed;
 	
 	
 	DirectX::SimpleMath::Vector3 planePosition = DirectX::SimpleMath::Vector3(0, 0, 0);

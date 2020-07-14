@@ -15,6 +15,7 @@ using namespace DirectX;
 using namespace DirectX::SimpleMath;
 
 userStats gUserStats;
+gameAttributes gGameAttributes;
 
 void Game::OnResize(int screenWidth, int screenHeight)
 {
@@ -25,7 +26,7 @@ void Game::Initialise()
 {
 	TextRenderer::Initialise();
 	srand(time(nullptr));
-	spawnCountdown = 0;
+	gGameAttributes.spawnCountdown = 0;
 
 	//Projectile
 	Mesh& pt = GetMeshManager()->CreateMesh("missile");
@@ -110,30 +111,30 @@ float Game::IncreaseMoveSpeedOverTime()
 void Game::Update(float dTime)
 {
 	gUserStats.timeSurvived += dTime;
-	spawnCountdown -= dTime;
-	if (spawnCountdown <= 0)
+	gGameAttributes.spawnCountdown -= dTime;
+	if (gGameAttributes.spawnCountdown <= 0)
 	{
-		spawnCountdown = IncreaseDifficultyOverTime();
+		gGameAttributes.spawnCountdown = IncreaseDifficultyOverTime();
 		SpawnProjectiles();
 	}
 	MovePlane();
 	MoveProjectiles(dTime);
-	controllerPosition += controllerInput * dTime * moveSpeed;
-	controllerPosition = Clip(controllerPosition, -1, 1);
-	planePosition.x = MapNumber(-1, 1, -25, 25, controllerPosition);
+	gGameAttributes.controllerPosition += gGameAttributes.controllerInput * dTime * moveSpeed;
+	gGameAttributes.controllerPosition = Clip(gGameAttributes.controllerPosition, -1, 1);
+	planePosition.x = MapNumber(-1, 1, -25, 25, gGameAttributes.controllerPosition);
 	mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
 }
 
 void Game::MovePlane()
 {
 	if (GetMouseAndKeys()->IsPressed(VK_A)) {
-		controllerInput = -1;
+		gGameAttributes.controllerInput = -1;
 	}
 	else if (GetMouseAndKeys()->IsPressed(VK_D)) {
-		controllerInput = 1;
+		gGameAttributes.controllerInput = 1;
 	}
 	else
-		controllerInput = 0;
+		gGameAttributes.controllerInput = 0;
 }
 
 void Game::SpawnProjectiles()
@@ -153,12 +154,12 @@ void Game::SpawnProjectiles()
 
 void Game::MoveProjectiles(float dTime)
 {
-	projectileSpeed = IncreaseMoveSpeedOverTime();
+	gGameAttributes.projectileSpeed = IncreaseMoveSpeedOverTime();
 	for (int i = 0; i < mProjectiles.size(); i++)
 	{
 		if (mProjectiles[i]->active)
 		{
-			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * projectileSpeed);
+			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * gGameAttributes.projectileSpeed);
 			mProjectiles[i]->GetRotation() = mProjectiles[i]->GetRotation() - Vector3(0, 0, dTime * 5);
 			
 			if(mProjectiles[i]->GetPosition().z <= 0 && !mProjectiles[i]->playerHit)
@@ -166,8 +167,17 @@ void Game::MoveProjectiles(float dTime)
 				mProjectiles[i]->playerHit = true;
 				if(abs(mProjectiles[i]->GetPosition().x - mPlane.GetPosition().x) < 8)
 				{
+					gUserStats.lives--;
 					mProjectiles[i]->active = false;
 					mProjectiles[i]->playerHit = false;
+
+					//TODO: Change death mechanics
+					if(gUserStats.lives <= 0)
+					{
+						gUserStats.lives = 0;
+						gUserStats = {};
+						gGameAttributes = {};
+					}
 				}
 			}
 
@@ -212,12 +222,17 @@ void Game::Render(float dTime)
 
 	TextRenderer::DrawString
 	(
-		L"Spawn Inteveral: " + to_wstring(spawnCountdown), Vector2(0, 30), Vector3(1, 1, 1)
+		L"LIVES: " + to_wstring(gUserStats.lives), Vector2(930, 0), Vector3(1, 1, 1)
 	);
 
 	TextRenderer::DrawString
 	(
-		L"Move Speed: " + to_wstring(projectileSpeed), Vector2(0, 60), Vector3(1, 1, 1)
+		L"Spawn Inteveral: " + to_wstring(gGameAttributes.spawnCountdown), Vector2(0, 30), Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"Move Speed: " + to_wstring(gGameAttributes.projectileSpeed), Vector2(0, 60), Vector3(1, 1, 1)
 	);
 	
 	EndRender();
