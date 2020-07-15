@@ -13,7 +13,7 @@ struct userStats
 	int lives = 3;
 	int projectilesAvoided = 0;
 	float timeSurvived = 0.0f;
-	std::string name;
+	std::wstring name;
 };
 
 struct gameAttributes
@@ -23,6 +23,13 @@ struct gameAttributes
 	float controllerPosition;
 	float projectileSpeed;
 	
+};
+
+enum gameStates
+{
+	main,
+	game,
+	death
 };
 
 class Game
@@ -54,22 +61,25 @@ private:
 	Game& operator=(const Game&) = delete;
 	Game(const Game& m) = delete;
 
-	float gAngle = 0;
-	float maxSpawnInterval = 5.f;
-	float lowestSpawnInterval = 0.3f;
 	float moveSpeed = 1.5f;
+	
 	float difficultyFactor = 0.047f;
 	float speedDifficultyFactor = 0.375f;
+	
+	float maxSpawnInterval = 5.f;
+	float lowestSpawnInterval = 0.3f;
+	
 	float maxProjectileSpeed = 100.f;
 	float lowestProjectileSpeed = 25.f;
 
-	
-	
 	DirectX::SimpleMath::Vector3 planePosition = DirectX::SimpleMath::Vector3(0, 0, 0);
 	
 	FPSCamera mCamera;
 	std::vector<Model*> mOpaques;
 
+	void MainMenu();
+	void MainGame();
+	void DeathScreen();
 };
 
 #endif

@@ -16,6 +16,7 @@ using namespace DirectX::SimpleMath;
 
 userStats gUserStats;
 gameAttributes gGameAttributes;
+gameStates currentState;
 
 void Game::OnResize(int screenWidth, int screenHeight)
 {
@@ -27,6 +28,9 @@ void Game::Initialise()
 	TextRenderer::Initialise();
 	srand(time(nullptr));
 	gGameAttributes.spawnCountdown = 0;
+
+	currentState = main;
+	//currentState = game;
 
 	//Projectile
 	Mesh& pt = GetMeshManager()->CreateMesh("missile");
@@ -110,19 +114,33 @@ float Game::IncreaseMoveSpeedOverTime()
 
 void Game::Update(float dTime)
 {
-	gUserStats.timeSurvived += dTime;
-	gGameAttributes.spawnCountdown -= dTime;
-	if (gGameAttributes.spawnCountdown <= 0)
-	{
-		gGameAttributes.spawnCountdown = IncreaseDifficultyOverTime();
-		SpawnProjectiles();
+	switch (currentState) {
+	case gameStates::main:
+		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
+			currentState = game;
+		}
+		break;
+	case gameStates::game:
+		gUserStats.timeSurvived += dTime;
+		gGameAttributes.spawnCountdown -= dTime;
+		if (gGameAttributes.spawnCountdown <= 0)
+		{
+			gGameAttributes.spawnCountdown = IncreaseDifficultyOverTime();
+			SpawnProjectiles();
+		}
+		MovePlane();
+		MoveProjectiles(dTime);
+		gGameAttributes.controllerPosition += gGameAttributes.controllerInput * dTime * moveSpeed;
+		gGameAttributes.controllerPosition = Clip(gGameAttributes.controllerPosition, -1, 1);
+		planePosition.x = MapNumber(-1, 1, -25, 25, gGameAttributes.controllerPosition);
+		mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
+		break;
+	case gameStates::death:
+		currentState = death;
+		break;
+	default:
+		break;
 	}
-	MovePlane();
-	MoveProjectiles(dTime);
-	gGameAttributes.controllerPosition += gGameAttributes.controllerInput * dTime * moveSpeed;
-	gGameAttributes.controllerPosition = Clip(gGameAttributes.controllerPosition, -1, 1);
-	planePosition.x = MapNumber(-1, 1, -25, 25, gGameAttributes.controllerPosition);
-	mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
 }
 
 void Game::MovePlane()
@@ -177,6 +195,10 @@ void Game::MoveProjectiles(float dTime)
 						gUserStats.lives = 0;
 						gUserStats = {};
 						gGameAttributes = {};
+						for (int i = 0; i < mProjectiles.size(); i++)
+						{
+								mProjectiles[i]->active = false;
+						}
 					}
 				}
 			}
@@ -194,51 +216,22 @@ void Game::Render(float dTime)
 {
 	BeginRender(Colours::Black);
 
-	float alpha = 0.5f + sinf(gAngle * 2)*0.5f;
-
-
-	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
-
-	//CreateViewMatrix(FX::GetViewMatrix(), mCamPos, Vector3(0, 0, 0), Vector3(0, 1, 0));
-	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f*PI, GetAspectRatio(), 1, 1000.f);
-	Matrix w = Matrix::CreateRotationY(sinf(gAngle));
-	FX::SetPerObjConsts(gd3dImmediateContext, w);
-
-	mSkybox.GetPosition() = mCamera.GetPos();
-	FX::GetMyFX()->Render(mSkybox, gd3dImmediateContext);
-	//render all the solid models first in no particular order
-	for (Model*p : mOpaques)
-	{
-		if(!p->active)
-			continue;
-		FX::GetMyFX()->Render(*p, gd3dImmediateContext);	
+	switch (currentState) {
+	case gameStates::main:
+		MainMenu();
+		break;
+	case gameStates::game:
+		MainGame();	
+		break;
+	case gameStates::death:
+		DeathScreen();
+		break;
+	default:
+		break;
 	}
-
-	TextRenderer::SetFont("LatoRegular16");
-	TextRenderer::DrawString
-	(
-		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(0, 0),Vector3(1, 1, 1)
-	);
-
-	TextRenderer::DrawString
-	(
-		L"LIVES: " + to_wstring(gUserStats.lives), Vector2(930, 0), Vector3(1, 1, 1)
-	);
-
-	TextRenderer::DrawString
-	(
-		L"Spawn Inteveral: " + to_wstring(gGameAttributes.spawnCountdown), Vector2(0, 30), Vector3(1, 1, 1)
-	);
-
-	TextRenderer::DrawString
-	(
-		L"Move Speed: " + to_wstring(gGameAttributes.projectileSpeed), Vector2(0, 60), Vector3(1, 1, 1)
-	);
-	
 	EndRender();
 
 	GetMouseAndKeys()->PostProcess();
-
 }
 
 LRESULT Game::WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -264,4 +257,65 @@ LRESULT Game::WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 	//default message handling (resize window, full screen, etc)
 	return DefaultMssgHandler(hwnd, msg, wParam, lParam);
+}
+
+void Game::MainMenu()
+{
+	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
+
+	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
+
+	TextRenderer::SetFont("LatoRegular16");
+	TextRenderer::DrawString
+	(
+		L"Press Space to Start", Vector2(0, 0), Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"Press Q to Quit", Vector2(0, 30), Vector3(1, 1, 1)
+	);
+}
+
+void Game::MainGame()
+{
+	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
+
+	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
+
+	mSkybox.GetPosition() = mCamera.GetPos();
+	FX::GetMyFX()->Render(mSkybox, gd3dImmediateContext);
+	//render all the solid models first in no particular order
+	for (Model* p : mOpaques)
+	{
+		if (!p->active)
+			continue;
+		FX::GetMyFX()->Render(*p, gd3dImmediateContext);
+	}
+
+	TextRenderer::SetFont("LatoRegular16");
+	TextRenderer::DrawString
+	(
+		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(0, 0), Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"LIVES: " + to_wstring(gUserStats.lives), Vector2(0, 30), Vector3(1, 1, 1)
+	);
+
+	/*TextRenderer::DrawString
+	(
+		L"Spawn Inteveral: " + to_wstring(gGameAttributes.spawnCountdown), Vector2(0, 60), Vector3(1, 1, 1)
+	);
+
+	TextRenderer::DrawString
+	(
+		L"Move Speed: " + to_wstring(gGameAttributes.projectileSpeed), Vector2(0, 90), Vector3(1, 1, 1)
+	);*/
+}
+
+void Game::DeathScreen()
+{
+	
 }

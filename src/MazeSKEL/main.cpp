@@ -61,7 +61,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	new FX::MyFX(gd3dDevice);
 	new MeshManager;
 	new MouseAndKeys;
-	GetMouseAndKeys()->Initialise(GetMainWnd(), false);
+	GetMouseAndKeys()->Initialise(GetMainWnd());
 	gGame.Initialise();
 
 	Run(Update, Render);
