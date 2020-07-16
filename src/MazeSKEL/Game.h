@@ -28,8 +28,10 @@ struct gameAttributes
 enum gameStates
 {
 	main,
+	instruct,
 	game,
-	death
+	death,
+	score
 };
 
 class Game
@@ -57,6 +59,8 @@ public:
 	Model mBox, mQuad, mSkybox, mPlane;
 	std::vector<Model*> mProjectiles;
 
+	int mScreenWidth, mScreenHeight;
+
 private:
 	Game& operator=(const Game&) = delete;
 	Game(const Game& m) = delete;
@@ -78,6 +82,7 @@ private:
 	std::vector<Model*> mOpaques;
 
 	void MainMenu();
+	void Instruct();
 	void MainGame();
 	void DeathScreen();
 };

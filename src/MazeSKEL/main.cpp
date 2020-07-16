@@ -49,9 +49,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 {
 	SeedRandom();
 	File::initialiseSystem();
-	USER::SetUserDataFolder("MyGame");
+	USER::SetUserDataFolder("Mark of Duty");
 
-	if (!InitMainWindow(1024, 768, hInstance, "MyGame", MainWndProc))
+	if (!InitMainWindow(1024, 768, hInstance, "Mark of Duty: P4G Ops", MainWndProc))
 		assert(false);
 
 	if (!InitDirect3D(OnResize))

@@ -7,6 +7,7 @@ void TextRenderer::Initialise()
 
 	//Load all fonts
 	LoadFont("LatoRegular16", "../bin/data/latoRegular16.spritefont");
+	LoadFont("cod", "../bin/data/callofopsduty.spritefont");
 }
 
 void TextRenderer::Release()

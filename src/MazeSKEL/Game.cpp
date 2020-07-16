@@ -20,7 +20,9 @@ gameStates currentState;
 
 void Game::OnResize(int screenWidth, int screenHeight)
 {
-	OnResize_Default(screenWidth, screenHeight);
+	mScreenHeight = screenHeight;
+	mScreenWidth = screenWidth;
+	OnResize_Default(mScreenWidth, mScreenHeight);
 }
 
 void Game::Initialise()
@@ -28,7 +30,8 @@ void Game::Initialise()
 	TextRenderer::Initialise();
 	srand(time(nullptr));
 	gGameAttributes.spawnCountdown = 0;
-
+	gUserStats = {};
+	gGameAttributes = {};
 	currentState = main;
 	//currentState = game;
 
@@ -119,6 +122,17 @@ void Game::Update(float dTime)
 		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
 			currentState = game;
 		}
+		else if (GetMouseAndKeys()->IsPressed(VK_I)) {
+			currentState = instruct;
+		}
+		break;
+	case gameStates::instruct:
+		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
+			currentState = game;
+		}
+		else if (GetMouseAndKeys()->IsPressed(VK_B)) {
+			currentState = main;
+		}
 		break;
 	case gameStates::game:
 		gUserStats.timeSurvived += dTime;
@@ -136,7 +150,11 @@ void Game::Update(float dTime)
 		mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
 		break;
 	case gameStates::death:
-		currentState = death;
+		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
+			gUserStats = {};
+			gGameAttributes = {};
+			currentState = game;
+		}
 		break;
 	default:
 		break;
@@ -193,12 +211,11 @@ void Game::MoveProjectiles(float dTime)
 					if(gUserStats.lives <= 0)
 					{
 						gUserStats.lives = 0;
-						gUserStats = {};
-						gGameAttributes = {};
 						for (int i = 0; i < mProjectiles.size(); i++)
 						{
 								mProjectiles[i]->active = false;
 						}
+						currentState = death;
 					}
 				}
 			}
@@ -216,9 +233,16 @@ void Game::Render(float dTime)
 {
 	BeginRender(Colours::Black);
 
+	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
+
+	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
+
 	switch (currentState) {
 	case gameStates::main:
 		MainMenu();
+		break;
+	case gameStates::instruct:
+		Instruct();
 		break;
 	case gameStates::game:
 		MainGame();	
@@ -261,28 +285,62 @@ LRESULT Game::WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 
 void Game::MainMenu()
 {
-	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
-
-	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
-
+	TextRenderer::SetFont("cod");
+	TextRenderer::DrawString
+	(
+		L"Mark of Duty: P4G Ops", Vector2((mScreenWidth/2) - 325, 0), Vector3(1, 1, 1)
+	);
 	TextRenderer::SetFont("LatoRegular16");
 	TextRenderer::DrawString
 	(
-		L"Press Space to Start", Vector2(0, 0), Vector3(1, 1, 1)
+		L"Press Space to Start", Vector2((mScreenWidth / 2) - 100, 540), Vector3(1, 1, 1)
 	);
-
 	TextRenderer::DrawString
 	(
-		L"Press Q to Quit", Vector2(0, 30), Vector3(1, 1, 1)
+		L"Press I for Instructions", Vector2((mScreenWidth / 2) - 100, 570), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"Press Q to Quit", Vector2((mScreenWidth / 2) - 100, 600), Vector3(1, 1, 1)
+	);
+}
+
+void Game::Instruct()
+{
+	TextRenderer::SetFont("cod");
+	TextRenderer::DrawString
+	(
+		L"Mark of Duty: P4G Ops", Vector2((mScreenWidth / 2) - 325, 0), Vector3(1, 1, 1)
+	);
+	TextRenderer::SetFont("LatoRegular16");
+	TextRenderer::DrawString
+	(
+		L"Press the A key to move left and the D key to move right.", Vector2((mScreenWidth / 2) - 250, 200), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"Avoid the shooting missiles for as long as you can.", Vector2((mScreenWidth / 2) - 210, 230), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"The longer the time survived, the higher the score.", Vector2((mScreenWidth / 2) - 210, 260), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"Press Space to Start", Vector2((mScreenWidth / 2) - 100, 340), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"Press B to return to Menu", Vector2((mScreenWidth / 2) - 100, 370), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"Press Q to Quit", Vector2((mScreenWidth / 2) - 100, 400), Vector3(1, 1, 1)
 	);
 }
 
 void Game::MainGame()
 {
-	FX::SetPerFrameConsts(gd3dImmediateContext, mCamera.GetPos());
-
-	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
-
 	mSkybox.GetPosition() = mCamera.GetPos();
 	FX::GetMyFX()->Render(mSkybox, gd3dImmediateContext);
 	//render all the solid models first in no particular order
@@ -317,5 +375,13 @@ void Game::MainGame()
 
 void Game::DeathScreen()
 {
-	
+	TextRenderer::SetFont("LatoRegular16");
+	TextRenderer::DrawString
+	(
+		L"YOU DIED", Vector2(0, 0), Vector3(1, 1, 1)
+	);
+	TextRenderer::DrawString
+	(
+		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(0, 30), Vector3(1, 1, 1)
+	);
 }
