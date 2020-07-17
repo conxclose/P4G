@@ -117,6 +117,9 @@ float Game::IncreaseMoveSpeedOverTime()
 
 void Game::Update(float dTime)
 {
+	if (GetIAudioMgr()->GetSongMgr()->IsPlaying(mMusicHandler) == false)
+		GetIAudioMgr()->GetSongMgr()->Play("Soundtrack", true, false, &mMusicHandler, 0.3f);
+	
 	switch (currentState) {
 	case gameStates::main:
 		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {

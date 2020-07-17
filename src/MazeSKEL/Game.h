@@ -6,6 +6,7 @@
 
 #include "Mesh.h"
 #include "Model.h"
+#include "AudioMgr.h"
 #include "FPSCamera.h"
 
 struct userStats
@@ -60,6 +61,7 @@ public:
 	std::vector<Model*> mProjectiles;
 
 	int mScreenWidth, mScreenHeight;
+	unsigned int mMusicHandler;
 
 private:
 	Game& operator=(const Game&) = delete;

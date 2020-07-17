@@ -19,6 +19,7 @@ Game gGame;
 void Update(float dTime)
 {
 	gGame.Update(dTime);
+	GetIAudioMgr()->Update();
 }
 
 void Render(float dTime)
@@ -61,6 +62,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	new FX::MyFX(gd3dDevice);
 	new MeshManager;
 	new MouseAndKeys;
+	new AudioMgrFMOD;
+	GetIAudioMgr()->Initialise();
 	GetMouseAndKeys()->Initialise(GetMainWnd());
 	gGame.Initialise();
 
