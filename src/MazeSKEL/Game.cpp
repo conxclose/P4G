@@ -117,9 +117,9 @@ float Game::IncreaseMoveSpeedOverTime()
 
 void Game::Update(float dTime)
 {
-	if (GetIAudioMgr()->GetSongMgr()->IsPlaying(mMusicHandler) == false)
+	if (GetIAudioMgr()->GetSongMgr()->IsPlaying(mMusicHandler) == false && gUserStats.lives > 1)
 		GetIAudioMgr()->GetSongMgr()->Play("Soundtrack", true, false, &mMusicHandler, 0.3f);
-	
+
 	switch (currentState) {
 	case gameStates::main:
 		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
@@ -206,10 +206,16 @@ void Game::MoveProjectiles(float dTime)
 				mProjectiles[i]->playerHit = true;
 				if(abs(mProjectiles[i]->GetPosition().x - mPlane.GetPosition().x) < 8)
 				{
+					if (!GetIAudioMgr()->GetSfxMgr()->IsPlaying(mSoundEffectHandler))
+						GetIAudioMgr()->GetSfxMgr()->Play("hit", false, false, &mSoundEffectHandler, 1.f);
+					
 					gUserStats.lives--;
 					mProjectiles[i]->active = false;
 					mProjectiles[i]->playerHit = false;
 
+					if(gUserStats.lives == 1)
+						GetIAudioMgr()->GetSfxMgr()->Play("panic", true, false, &mSoundEffectHandler, 1.f);
+					
 					//TODO: Change death mechanics
 					if(gUserStats.lives <= 0)
 					{
@@ -378,13 +384,23 @@ void Game::MainGame()
 
 void Game::DeathScreen()
 {
+	TextRenderer::SetFont("cod");
+	TextRenderer::DrawString
+	(
+		L"YOU DIED", Vector2((mScreenWidth / 2) - 150, 0), Vector3(1, 1, 1)
+	);
 	TextRenderer::SetFont("LatoRegular16");
 	TextRenderer::DrawString
 	(
-		L"YOU DIED", Vector2(0, 0), Vector3(1, 1, 1)
+		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(mScreenWidth/2 - 150, 100), Vector3(1, 1, 1)
+	);
+	
+	TextRenderer::DrawString
+	(
+		L"Press Space to Replay", Vector2((mScreenWidth / 2) - 120, 540), Vector3(1, 1, 1)
 	);
 	TextRenderer::DrawString
 	(
-		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(0, 30), Vector3(1, 1, 1)
+		L"Press Q to Quit", Vector2((mScreenWidth / 2) - 120, 570), Vector3(1, 1, 1)
 	);
 }

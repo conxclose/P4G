@@ -71,6 +71,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
 	//shut down
 	gGame.Release();
+	delete GetIAudioMgr();
 	delete GetMouseAndKeys();
 	delete GetMeshManager();
 	delete FX::GetMyFX();

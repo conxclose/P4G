@@ -62,6 +62,7 @@ public:
 
 	int mScreenWidth, mScreenHeight;
 	unsigned int mMusicHandler;
+	unsigned int mSoundEffectHandler;
 
 private:
 	Game& operator=(const Game&) = delete;
