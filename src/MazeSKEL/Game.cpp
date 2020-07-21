@@ -6,7 +6,10 @@
 #include "GeometryBuilder.h"
 #include "FX.h"
 #include "Input.h"
+#include <fstream>
 #include <ctime>
+#include <iomanip>
+
 
 #include "TextRenderer.h"
 
@@ -28,11 +31,15 @@ void Game::OnResize(int screenWidth, int screenHeight)
 void Game::Initialise()
 {
 	TextRenderer::Initialise();
+	
 	srand(time(nullptr));
+	
 	gGameAttributes.spawnCountdown = 0;
 	gUserStats = {};
 	gGameAttributes = {};
 	currentState = main;
+
+	ReadFromFile();
 	//currentState = game;
 
 	//Projectile
@@ -113,6 +120,40 @@ float Game::IncreaseDifficultyOverTime()
 float Game::IncreaseMoveSpeedOverTime()
 {
 	return min(speedDifficultyFactor * gUserStats.timeSurvived + lowestProjectileSpeed, maxProjectileSpeed);
+}
+
+void Game::ReadFromFile()
+{
+	ifstream readFile;
+	readFile.open(HIGHSCORE);
+
+	if(readFile.is_open())
+	{
+		while(!readFile.eof())
+		{
+			readFile >> highScore;
+		}
+	}
+
+	readFile.close();
+}
+
+void Game::WriteToFile()
+{
+	ofstream writeFile(HIGHSCORE);
+
+	if(writeFile.is_open())
+	{
+		if(gUserStats.timeSurvived > highScore)
+		{
+			highScore = gUserStats.timeSurvived;
+		}
+
+		writeFile << setprecision(8);
+		writeFile << highScore;
+	}
+
+	writeFile.close();
 }
 
 void Game::Update(float dTime)
@@ -216,10 +257,10 @@ void Game::MoveProjectiles(float dTime)
 					if(gUserStats.lives == 1)
 						GetIAudioMgr()->GetSfxMgr()->Play("panic", true, false, &mSoundEffectHandler, 1.f);
 					
-					//TODO: Change death mechanics
 					if(gUserStats.lives <= 0)
 					{
 						gUserStats.lives = 0;
+						WriteToFile();
 						for (int i = 0; i < mProjectiles.size(); i++)
 						{
 								mProjectiles[i]->active = false;
@@ -394,7 +435,10 @@ void Game::DeathScreen()
 	(
 		L"TIME SURVIVED: " + to_wstring(gUserStats.timeSurvived), Vector2(mScreenWidth/2 - 150, 100), Vector3(1, 1, 1)
 	);
-	
+	TextRenderer::DrawString
+	(
+		L"HIGHSCORE: " + to_wstring(highScore), Vector2(mScreenWidth / 2 - 150, 130), Vector3(1, 1, 1)
+	);
 	TextRenderer::DrawString
 	(
 		L"Press Space to Replay", Vector2((mScreenWidth / 2) - 120, 540), Vector3(1, 1, 1)

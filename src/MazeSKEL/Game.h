@@ -2,6 +2,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#define HIGHSCORE "data/highscore.txt"
+
 #include <vector>
 
 #include "Mesh.h"
@@ -14,7 +16,6 @@ struct userStats
 	int lives = 3;
 	int projectilesAvoided = 0;
 	float timeSurvived = 0.0f;
-	std::wstring name;
 };
 
 struct gameAttributes
@@ -23,7 +24,6 @@ struct gameAttributes
 	float controllerInput;
 	float controllerPosition;
 	float projectileSpeed;
-	
 };
 
 enum gameStates
@@ -55,6 +55,9 @@ public:
 	float Clip(float n, float lower, float upper);
 	float IncreaseDifficultyOverTime();
 	float IncreaseMoveSpeedOverTime();
+
+	void ReadFromFile();
+	void WriteToFile();
 	LRESULT WindowsMssgHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	Model mBox, mQuad, mSkybox, mPlane;
@@ -78,6 +81,8 @@ private:
 	
 	float maxProjectileSpeed = 100.f;
 	float lowestProjectileSpeed = 25.f;
+
+	float highScore;
 
 	DirectX::SimpleMath::Vector3 planePosition = DirectX::SimpleMath::Vector3(0, 0, 0);
 	
