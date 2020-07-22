@@ -17,6 +17,7 @@ using namespace std;
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
 
+//Engine doesn't respect encapsulation so...
 userStats gUserStats;
 gameAttributes gGameAttributes;
 gameStates currentState;
@@ -31,18 +32,22 @@ void Game::OnResize(int screenWidth, int screenHeight)
 void Game::Initialise()
 {
 	TextRenderer::Initialise();
-	
+
+	//Seed rand with time for VC++' terrible RNG
 	srand(time(nullptr));
 	
-	gGameAttributes.spawnCountdown = 0;
+	//Reset struct data
 	gUserStats = {};
 	gGameAttributes = {};
+
+	//Load main menu
 	currentState = main;
 
+	//Read in highscore from text file
 	ReadFromFile();
-	//currentState = game;
 
-	//Projectile
+	//Creates 25 missiles at beginning of the game to be stored in memory and reused
+	//Active(true)= in use, false = in memory 
 	Mesh& pt = GetMeshManager()->CreateMesh("missile");
 	pt.CreateFrom("data/missile.obj", gd3dDevice, FX::GetMyFX()->mCache);
 	MaterialExt matP;
@@ -131,6 +136,8 @@ void Game::ReadFromFile()
 	{
 		while(!readFile.eof())
 		{
+			//ifstream only has 6 figures of precision, use more to stop rounding errors
+			readFile >> setprecision(9);
 			readFile >> highScore;
 		}
 	}
@@ -148,8 +155,8 @@ void Game::WriteToFile()
 		{
 			highScore = gUserStats.timeSurvived;
 		}
-
-		writeFile << setprecision(8);
+		//ofstream only has 6 figures of precision, use more to stop rounding errors
+		writeFile << setprecision(9);
 		writeFile << highScore;
 	}
 
@@ -158,9 +165,11 @@ void Game::WriteToFile()
 
 void Game::Update(float dTime)
 {
-	if (GetIAudioMgr()->GetSongMgr()->IsPlaying(mMusicHandler) == false && gUserStats.lives > 1)
+	//Play game soundtrack
+	if (GetIAudioMgr()->GetSongMgr()->IsPlaying(mMusicHandler) == false)
 		GetIAudioMgr()->GetSongMgr()->Play("Soundtrack", true, false, &mMusicHandler, 0.3f);
 
+	//Update and Input for each gamestate
 	switch (currentState) {
 	case gameStates::main:
 		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
@@ -179,21 +188,30 @@ void Game::Update(float dTime)
 		}
 		break;
 	case gameStates::game:
+		//Increases time survived
 		gUserStats.timeSurvived += dTime;
+		//Countdown spawn timer
 		gGameAttributes.spawnCountdown -= dTime;
+		//Spawn new projectile and reset timer
 		if (gGameAttributes.spawnCountdown <= 0)
 		{
-			gGameAttributes.spawnCountdown = IncreaseDifficultyOverTime();
 			SpawnProjectiles();
+			gGameAttributes.spawnCountdown = IncreaseDifficultyOverTime();
 		}
+		//Player Input
 		MovePlane();
+		//Projectile Movement
 		MoveProjectiles(dTime);
+
+		//Player movement across mapped axis
 		gGameAttributes.controllerPosition += gGameAttributes.controllerInput * dTime * moveSpeed;
 		gGameAttributes.controllerPosition = Clip(gGameAttributes.controllerPosition, -1, 1);
 		planePosition.x = MapNumber(-1, 1, -25, 25, gGameAttributes.controllerPosition);
 		mPlane.GetPosition() = Vector3(planePosition.x, 0, 0);
+		
 		break;
 	case gameStates::death:
+		//reset game on death
 		if (GetMouseAndKeys()->IsPressed(VK_SPACE)) {
 			gUserStats = {};
 			gGameAttributes = {};
@@ -219,8 +237,11 @@ void Game::MovePlane()
 
 void Game::SpawnProjectiles()
 {
+	//C++15 RNG for Projectile Pos
 	float pos = (rand() % 50 + 1) - 26;
 
+	//Set active to true for use
+	//Assign position with RNG
 	for(int i = 0; i < mProjectiles.size(); i++)
 	{
 		if(!mProjectiles[i]->active)
@@ -234,33 +255,48 @@ void Game::SpawnProjectiles()
 
 void Game::MoveProjectiles(float dTime)
 {
+	//Increases projectile movement speed
 	gGameAttributes.projectileSpeed = IncreaseMoveSpeedOverTime();
+
+	//Loop through projectile vector
 	for (int i = 0; i < mProjectiles.size(); i++)
 	{
+		//If the projectile is active (in use, not in memory)
 		if (mProjectiles[i]->active)
 		{
+			//Assign movement
 			mProjectiles[i]->GetPosition() = mProjectiles[i]->GetPosition() - Vector3(0, 0, dTime * gGameAttributes.projectileSpeed);
 			mProjectiles[i]->GetRotation() = mProjectiles[i]->GetRotation() - Vector3(0, 0, dTime * 5);
-			
+
+			//Hit detection
 			if(mProjectiles[i]->GetPosition().z <= 0 && !mProjectiles[i]->playerHit)
 			{
 				mProjectiles[i]->playerHit = true;
 				if(abs(mProjectiles[i]->GetPosition().x - mPlane.GetPosition().x) < 8)
 				{
+					//Player Hit Audio
 					if (!GetIAudioMgr()->GetSfxMgr()->IsPlaying(mSoundEffectHandler))
 						GetIAudioMgr()->GetSfxMgr()->Play("hit", false, false, &mSoundEffectHandler, 1.f);
-					
+
+					//Remove a life
 					gUserStats.lives--;
+					//Send projectile back to memory to be respawned
 					mProjectiles[i]->active = false;
+					//Reset hit bool
 					mProjectiles[i]->playerHit = false;
 
+					//Last life audio
 					if(gUserStats.lives == 1)
 						GetIAudioMgr()->GetSfxMgr()->Play("panic", true, false, &mSoundEffectHandler, 1.f);
-					
+
+					//Death mechanics
 					if(gUserStats.lives <= 0)
 					{
+						//Make sure player cannot have negative lives
 						gUserStats.lives = 0;
+						//Save highscore
 						WriteToFile();
+						//Deactivate all missiles
 						for (int i = 0; i < mProjectiles.size(); i++)
 						{
 								mProjectiles[i]->active = false;
@@ -270,6 +306,7 @@ void Game::MoveProjectiles(float dTime)
 				}
 			}
 
+			//Kill plane for any avoided missiles
 			if (mProjectiles[i]->GetPosition().z < -65)
 			{
 				mProjectiles[i]->active = false;
@@ -287,6 +324,7 @@ void Game::Render(float dTime)
 
 	CreateProjectionMatrix(FX::GetProjectionMatrix(), 0.25f * PI, GetAspectRatio(), 1, 1000.f);
 
+	//Render calls for each state
 	switch (currentState) {
 	case gameStates::main:
 		MainMenu();
@@ -411,16 +449,6 @@ void Game::MainGame()
 	(
 		L"LIVES: " + to_wstring(gUserStats.lives), Vector2(0, 30), Vector3(1, 1, 1)
 	);
-
-	/*TextRenderer::DrawString
-	(
-		L"Spawn Inteveral: " + to_wstring(gGameAttributes.spawnCountdown), Vector2(0, 60), Vector3(1, 1, 1)
-	);
-
-	TextRenderer::DrawString
-	(
-		L"Move Speed: " + to_wstring(gGameAttributes.projectileSpeed), Vector2(0, 90), Vector3(1, 1, 1)
-	);*/
 }
 
 void Game::DeathScreen()
